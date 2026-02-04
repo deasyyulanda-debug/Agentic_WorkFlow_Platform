@@ -1,0 +1,1 @@
+"{\"content\": \"Code whispers and learns,\\nNew minds bloom in silicon,\\nFuture takes new form.\\n\", \"model\": \"gemini-2.0-flash\", \"provider\": \"gemini\", \"usage\": {\"prompt_tokens\": 16, \"completion_tokens\": 19, \"total_tokens\": 35}, \"finish_reason\": \"STOP\", \"metadata\": {}}"

@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# FastAPI
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Database
+*.db
+*.db-journal
+data/db/*.db
+data/db/*.db-journal
+
+# Artifacts
+data/artifacts/*
+!data/artifacts/.gitkeep
+
+# Environment
+.env
+.env.local
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (for web app)
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# Logs
+*.log
+logs/
+data/logs/
+
+# Docs (keep originals)
+!*.docx
+!*.pdf

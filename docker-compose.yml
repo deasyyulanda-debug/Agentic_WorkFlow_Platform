@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # FastAPI Backend
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: agentic_workflow_api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./data/db/workflows.db
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - ARTIFACTS_PATH=/app/data/artifacts
+    volumes:
+      - ./apps/api/src:/app/src
+      - ./data:/app/data
+    env_file:
+      - .env
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js Frontend
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: agentic_workflow_web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    volumes:
+      - ./apps/web/src:/app/src
+      - ./apps/web/public:/app/public
+    env_file:
+      - .env
+    depends_on:
+      - api
+    command: npm run dev
+    restart: unless-stopped
+
+volumes:
+  db_data:
+    driver: local
