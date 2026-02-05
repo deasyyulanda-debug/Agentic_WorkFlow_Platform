@@ -22,6 +22,7 @@ from core import (
     TimeoutExceededError,
     settings
 )
+from .output_formatter import OutputFormatter
 
 
 class WorkflowEngine:
@@ -342,10 +343,18 @@ class WorkflowEngine:
             "provider": provider_settings.provider.value
         }
         
+        output_data = {
+            "final": context["outputs"][-1] if context["outputs"] else None,
+            "all_steps": context["outputs"]
+        }
+        
+        # Format the output in a readable format
+        formatted_output = OutputFormatter.format_execution_result(output_data, metrics)
+        
         return {
             "output": {
-                "final": context["outputs"][-1] if context["outputs"] else None,
-                "all_steps": context["outputs"]
+                "formatted": formatted_output,
+                "raw": output_data  # Keep raw data for programmatic access
             },
             "metrics": metrics
         }

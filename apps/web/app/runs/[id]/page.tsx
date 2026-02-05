@@ -129,9 +129,19 @@ export default function RunDetailPage() {
                     <CardTitle>Output Data</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
-                      {JSON.stringify(run.output_data, null, 2)}
-                    </pre>
+                    {run.output_data.formatted ? (
+                      // Display formatted output with proper vertical scrolling
+                      <div className="bg-muted p-6 rounded-lg max-h-[600px] overflow-y-auto">
+                        <pre className="whitespace-pre-wrap font-mono text-sm leading-relaxed">
+                          {run.output_data.formatted}
+                        </pre>
+                      </div>
+                    ) : (
+                      // Fallback to JSON if formatted is not available
+                      <pre className="bg-muted p-4 rounded-lg overflow-x-auto text-sm">
+                        {JSON.stringify(run.output_data, null, 2)}
+                      </pre>
+                    )}
                   </CardContent>
                 </Card>
               )}

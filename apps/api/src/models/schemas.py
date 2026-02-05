@@ -280,16 +280,42 @@ class RunResponse(BaseModel):
     def model_validate(cls, obj):
         """Custom validation to handle DB field name mapping"""
         if hasattr(obj, 'run_mode'):
+            from engine.output_formatter import OutputFormatter
+            
             # Map DB field names to response field names
             # Use validation_result as output_data for the frontend
             validation_result = getattr(obj, 'validation_result', None)
+            
+            # Apply formatting to output_data if it exists and is not already formatted
+            formatted_output = validation_result
+            if validation_result:
+                # Check if this is old format (has 'final' and 'all_steps' but not 'formatted')
+                if isinstance(validation_result, dict):
+                    # Extract metrics if they exist
+                    metrics = validation_result.get('_metrics', {})
+                    
+                    # Check if it needs formatting (old format)
+                    if 'formatted' not in validation_result and ('final' in validation_result or 'all_steps' in validation_result):
+                        # Old format - apply formatting
+                        output_part = {
+                            'final': validation_result.get('final'),
+                            'all_steps': validation_result.get('all_steps', [])
+                        }
+                        formatted_text = OutputFormatter.format_execution_result(output_part, metrics)
+                        formatted_output = {
+                            'formatted': formatted_text,
+                            'raw': output_part
+                        }
+                        if metrics:
+                            formatted_output['_metrics'] = metrics
+            
             data = {
                 'id': str(obj.id),
                 'workflow_id': str(obj.workflow_id),
                 'status': obj.status,
                 'mode': obj.run_mode,  # DB: run_mode -> JSON: mode
                 'input_data': obj.inputs,  # DB: inputs -> JSON: input_data
-                'output_data': validation_result,  # Use validation_result as output_data
+                'output_data': formatted_output,  # Use validation_result as output_data (with formatting)
                 'metrics': getattr(obj, 'metrics', None),
                 'validation_result': validation_result,
                 'error_message': getattr(obj, 'error_message', None),
