@@ -137,12 +137,14 @@ from api.settings_router import router as settings_router
 from api.workflows_router import router as workflows_router
 from api.runs_router import router as runs_router
 from api.artifacts_router import router as artifacts_router
+from api.rag_router import router as rag_router
 
 # Register routers
 app.include_router(settings_router, prefix="/api/v1/settings", tags=["Settings"])
 app.include_router(workflows_router, prefix="/api/v1/workflows", tags=["Workflows"])
 app.include_router(runs_router, prefix="/api/v1/runs", tags=["Runs"])
 app.include_router(artifacts_router, prefix="/api/v1/artifacts", tags=["Artifacts"])
+app.include_router(rag_router, prefix="/api/v1/rag", tags=["RAG Pipeline"])
 
 
 if __name__ == "__main__":
