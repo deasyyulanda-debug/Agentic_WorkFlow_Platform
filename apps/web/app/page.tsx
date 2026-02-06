@@ -22,6 +22,9 @@ export default function HomePage() {
               <Link href="/workflows" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
                 Workflows
               </Link>
+              <Link href="/rag" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
+                RAG Pipeline
+              </Link>
               <Link href="/settings" className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
                 Settings
               </Link>
