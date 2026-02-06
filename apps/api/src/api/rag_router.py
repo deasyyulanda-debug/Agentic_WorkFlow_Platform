@@ -2,6 +2,7 @@
 RAG Pipeline API Router
 Handles RAG pipeline creation, document upload, and querying.
 """
+import os
 from fastapi import APIRouter, HTTPException, UploadFile, File, status
 from typing import List
 
@@ -100,7 +101,6 @@ async def upload_document(
     allowed_extensions = {".txt", ".csv", ".md", ".pdf", ".json"}
     file_ext = ""
     if file.filename:
-        import os
         file_ext = os.path.splitext(file.filename)[1].lower()
 
     if file_ext not in allowed_extensions:

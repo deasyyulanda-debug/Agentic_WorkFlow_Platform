@@ -90,9 +90,9 @@ The [Orchestra-Research/AI-research-SKILLs](https://github.com/Orchestra-Researc
 ### Phase 1: Foundation Hardening (Week 1-2)
 > "You can't build a skyscraper on sand."
 
-- [ ] ~~Fix frontend build~~ ✅ Done
-- [ ] ~~Fix test suite~~ ✅ Done
-- [ ] Add GitHub Actions CI pipeline (pytest + next build on PR)
+- [x] ~~Fix frontend build~~ ✅ Done
+- [x] ~~Fix test suite~~ ✅ Done
+- [x] Add GitHub Actions CI pipeline (pytest + next build on PR) ✅ Done
 - [ ] Add Alembic database migrations
 - [ ] Add PostgreSQL support (keep SQLite for dev)
 - [ ] Implement JWT authentication (login/register/token refresh)
@@ -112,16 +112,22 @@ The [Orchestra-Research/AI-research-SKILLs](https://github.com/Orchestra-Researc
 - [ ] Implement `branch` step type (conditional logic in workflows)
 - [ ] Add workflow import/export (JSON)
 
-### Phase 3: RAG Pipeline Integration (Week 5-7)
+### Phase 3: RAG Pipeline Integration (Week 5-7) — **IN PROGRESS** 🚧
 > "This is the killer feature."
 
-- [ ] File upload API (PDF, DOCX, TXT, CSV)
-- [ ] Document parsing service (PyPDF2, python-docx)
-- [ ] Text chunking strategies (fixed-size, semantic, recursive)
-- [ ] Embedding generation (OpenAI embeddings, local models)
-- [ ] Vector store integration (ChromaDB for local, Pinecone for cloud)
-- [ ] RAG retrieval step type in workflow engine
-- [ ] RAG pipeline configuration UI
+- [x] File upload API (PDF, TXT, CSV, MD, JSON — up to 10MB) ✅ Done
+- [x] Document parsing service (text extraction from multiple file formats) ✅ Done
+- [x] Text chunking strategies (fixed-size, recursive, sentence, paragraph) ✅ Done
+- [x] Embedding generation (ChromaDB default + OpenAI embeddings) ✅ Done
+- [x] Vector store integration (ChromaDB with persistent storage) ✅ Done
+- [x] RAG retrieval step types in workflow engine (`rag_ingest`, `rag_retrieve`) ✅ Done
+- [x] RAG pipeline configuration UI (pipeline builder page at /rag) ✅ Done
+- [x] RAG API with 7 endpoints (create, list, get, delete, upload, query, config) ✅ Done
+- [x] 12 RAG API tests (47 total passing) ✅ Done
+- [ ] Add PyPDF2/pdfplumber for production PDF parsing
+- [ ] Add FAISS vector store option (for high-performance use cases)
+- [ ] Add Pinecone vector store option (for cloud-scale deployments)
+- [ ] Connect RAG query results to LLM generation (RAG → Generate workflow)
 
 ### Phase 4: Advanced Features (Week 8-10)
 > "Differentiate from the competition."

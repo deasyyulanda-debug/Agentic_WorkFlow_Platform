@@ -285,7 +285,8 @@ class RAGService:
             distances = results["distances"][0] if results.get("distances") else [None] * len(documents)
 
             for doc, meta, dist in zip(documents, metadatas, distances):
-                # Convert distance to similarity score (Chroma uses L2 by default)
+                # ChromaDB uses L2 (Euclidean) distance by default.
+                # Convert to a 0-1 similarity score: closer to 1 = more similar.
                 score = 1.0 / (1.0 + dist) if dist is not None else None
 
                 # Apply score threshold if configured
@@ -356,7 +357,7 @@ class RAGService:
             # Extract text from PDF content streams
             for match in re.finditer(r'\(([^)]*)\)', raw):
                 text = match.group(1)
-                if len(text) > 2 and text.isprintable():
+                if len(text) > 2:
                     text_parts.append(text)
         except Exception:
             pass
@@ -513,7 +514,7 @@ class RAGService:
                     )
                     return None
 
-                model_name = embedding_config.get("model") or "text-embedding-3-small"
+                model_name = embedding_config.get("model") if embedding_config.get("model") else "text-embedding-3-small"
                 return embedding_functions.OpenAIEmbeddingFunction(
                     api_key=api_key,
                     model_name=model_name,

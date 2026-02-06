@@ -727,7 +727,7 @@ export default function RAGPipelinePage() {
                                 <FileText className="mr-1 h-3 w-3" />
                                 {result.metadata?.file_name || "Unknown"}
                               </Badge>
-                              {result.score !== null && (
+                              {result.score !== null && result.score !== undefined && (
                                 <Badge variant="secondary">
                                   Score: {(result.score * 100).toFixed(1)}%
                                 </Badge>
