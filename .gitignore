@@ -20,6 +20,10 @@ htmlcov/
 data/db/*.db
 data/db/*.db-journal
 
+# ChromaDB data
+data/chroma/
+**/data/chroma/
+
 # Artifacts
 data/artifacts/*
 !data/artifacts/.gitkeep

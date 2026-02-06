@@ -219,7 +219,7 @@ class WorkflowService:
                 raise InvalidWorkflowError(f"Step {i} missing 'type' field")
             
             # Validate step type
-            valid_types = ["prompt", "transform", "validate", "branch"]
+            valid_types = ["prompt", "transform", "validate", "branch", "rag_ingest", "rag_retrieve"]
             if step["type"] not in valid_types:
                 raise InvalidWorkflowError(
                     f"Step {i} has invalid type: {step['type']}. "

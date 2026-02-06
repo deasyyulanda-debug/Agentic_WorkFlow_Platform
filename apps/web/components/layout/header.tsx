@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Activity, Workflow, Settings, LayoutDashboard } from "lucide-react";
+import { Activity, Workflow, Settings, LayoutDashboard, Database } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Workflows", href: "/workflows", icon: Workflow },
+  { name: "RAG Pipeline", href: "/rag", icon: Database },
   { name: "Runs", href: "/runs", icon: Activity },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
