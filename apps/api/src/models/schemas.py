@@ -38,6 +38,8 @@ class ProviderEnum(str, Enum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
     DEEPSEEK = "deepseek"
+    OPENROUTER = "openrouter"
+    GROQ = "groq"
 
 
 class PersonaEnum(str, Enum):
@@ -223,6 +225,7 @@ class RunCreate(BaseModel):
     workflow_id: str = Field(..., description="Workflow to execute")
     input_data: Dict[str, Any] = Field(default_factory=dict, description="Workflow input parameters")
     mode: RunModeEnum = Field(RunModeEnum.TEST_RUN, description="Execution mode")
+    provider: ProviderEnum = Field(ProviderEnum.GEMINI, description="LLM provider to use")
     
     @field_validator('input_data')
     @classmethod
@@ -267,6 +270,7 @@ class RunResponse(BaseModel):
     workflow_id: str
     status: RunStatusEnum
     mode: RunModeEnum  # JSON response uses 'mode'
+    provider: ProviderEnum  # Which LLM provider is being used
     input_data: Dict[str, Any]  # JSON response uses 'input_data'
     output_data: Optional[Dict[str, Any]] = None
     metrics: Optional[Dict[str, Any]] = None
@@ -314,6 +318,7 @@ class RunResponse(BaseModel):
                 'workflow_id': str(obj.workflow_id),
                 'status': obj.status,
                 'mode': obj.run_mode,  # DB: run_mode -> JSON: mode
+                'provider': obj.provider if hasattr(obj, 'provider') and obj.provider else ProviderEnum.GEMINI,  # Default to Gemini for old runs
                 'input_data': obj.inputs,  # DB: inputs -> JSON: input_data
                 'output_data': formatted_output,  # Use validation_result as output_data (with formatting)
                 'metrics': getattr(obj, 'metrics', None),

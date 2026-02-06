@@ -245,6 +245,99 @@ class SettingsService:
             self.logger.error(f"Decryption failed for settings {settings_id}")
             raise DecryptionError()
     
+    async def test_settings(self, settings_id: str):
+        """
+        Test provider settings and return detailed response.
+        
+        Args:
+            settings_id: Settings ID
+            
+        Returns:
+            SettingsTestResponse with test results
+        """
+        from datetime import datetime
+        from models.schemas import SettingsTestResponse
+        
+        settings = await self.repository.get(settings_id)
+        if not settings:
+            raise SettingsNotFoundError(settings_id)
+        
+        try:
+            # Decrypt API key
+            api_key = self.secret_manager.decrypt(settings.encrypted_value)
+            
+            self.audit_logger.log_secret_access(
+                operation="decrypt_test",
+                resource=f"settings:{settings.id}",
+                success=True
+            )
+            
+            # Validate with provider
+            provider = get_provider(
+                settings.provider.value,
+                api_key,
+                timeout=10
+            )
+            
+            self.logger.info(f"Testing API key for provider: {settings.provider.value}")
+            is_valid = await provider.validate_api_key(api_key)
+            
+            tested_at = datetime.utcnow()
+            
+            if is_valid:
+                # Mark as tested
+                await self.repository.mark_tested(
+                    provider=settings.provider,
+                    success=True,
+                    tested_at=tested_at
+                )
+                self.logger.info(f"API key test successful for {settings.provider.value}")
+                
+                return SettingsTestResponse(
+                    success=True,
+                    message=f"{settings.provider.value} API key is valid",
+                    provider=settings.provider.value,
+                    tested_at=tested_at
+                )
+            else:
+                await self.repository.mark_tested(
+                    provider=settings.provider,
+                    success=False,
+                    tested_at=tested_at
+                )
+                return SettingsTestResponse(
+                    success=False,
+                    message=f"{settings.provider.value} API key is invalid",
+                    provider=settings.provider.value,
+                    tested_at=tested_at
+                )
+                
+        except ProviderAuthenticationError:
+            tested_at = datetime.utcnow()
+            await self.repository.mark_tested(
+                provider=settings.provider,
+                success=False,
+                tested_at=tested_at
+            )
+            return SettingsTestResponse(
+                success=False,
+                message=f"Authentication failed for {settings.provider.value}",
+                provider=settings.provider.value,
+                tested_at=tested_at
+            )
+        except ValueError as e:
+            self.logger.error(f"Decryption failed for settings {settings_id}")
+            raise DecryptionError()
+        except Exception as e:
+            self.logger.error(f"Unexpected error testing settings: {str(e)}")
+            tested_at = datetime.utcnow()
+            return SettingsTestResponse(
+                success=False,
+                message=f"Test failed: {str(e)}",
+                provider=settings.provider.value,
+                tested_at=tested_at
+            )
+    
     async def activate_settings(self, settings_id: str) -> SettingsResponse:
         """Activate provider settings"""
         settings = await self.repository.get(settings_id)

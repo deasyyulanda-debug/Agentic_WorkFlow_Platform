@@ -236,3 +236,70 @@ async def deactivate_settings(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
         )
+
+
+@router.get(
+    "/models/{provider}",
+    response_model=List[str],
+    summary="Get available models for provider",
+    description="Get list of supported models for a specific provider"
+)
+async def get_provider_models(provider: str):
+    """Get available models for a provider"""
+    from providers import get_provider
+    
+    # Map provider names to actual providers
+    provider_models = {
+        "gemini": [
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
+            "gemini-2.0-flash",
+            "gemini-2.0-flash-exp",
+            "gemini-exp-1206"
+        ],
+        "openai": [
+            "o3-deep-research-2025-06-26",
+            "gpt-5.2-pro-2025-12-11",
+            "gpt-5.2-2025-12-11",
+            "o4-mini-deep-research-2025-06-26",
+            "gpt-5.2-codex",
+            "gpt-5-mini-2025-08-07"
+        ],
+        "anthropic": [
+            "claude-3-5-haiku-20241022",
+            "claude-opus-4-20250514",
+            "claude-sonnet-4-20250514"
+        ],
+        "deepseek": [
+            "deepseek-chat",
+            "deepseek-coder"
+        ],
+        "openrouter": [
+            "anthropic/claude-sonnet-4.5",
+            "anthropic/claude-opus-4.5",
+            "openai/gpt-5.2",
+            "openai/gpt-oss-120b",
+            "deepseek/deepseek-v3.2",
+            "google/gemini-3-flash-preview",
+            "meta-llama/llama-4.1-70b",
+            "meta-llama/llama-4.1-405b",
+            "x-ai/grok-4.5",
+            "mistralai/mistral-large-3",
+            "qwen/qwen-2-vl-72b",
+            "alibaba/qwen-qwq-32b-preview",
+            "amazon/nova-pro-v2"
+        ],
+        "groq": [
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant"
+        ]
+    }
+    
+    provider_lower = provider.lower()
+    if provider_lower not in provider_models:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Provider '{provider}' not found"
+        )
+    
+    return provider_models[provider_lower]

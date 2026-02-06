@@ -67,21 +67,33 @@ class RunService:
             raise WorkflowNotFoundError(data.workflow_id)
         
         self.logger.info(
-            f"Creating run for workflow {data.workflow_id} in {data.mode.value} mode",
+            f"Creating run for workflow {data.workflow_id} in {data.mode.value} mode with provider {data.provider.value}",
             workflow_id=data.workflow_id,
-            mode=data.mode.value
+            mode=data.mode.value,
+            provider=data.provider.value
         )
+        
+        # Convert ProviderEnum to Provider (schema enum to DB enum)
+        provider_map = {
+            "openai": Provider.OPENAI,
+            "anthropic": Provider.ANTHROPIC,
+            "gemini": Provider.GEMINI,
+            "deepseek": Provider.DEEPSEEK,
+            "openrouter": Provider.OPENROUTER,
+            "groq": Provider.GROQ
+        }
+        db_provider = provider_map.get(data.provider.value, Provider.GEMINI)
         
         # Create run
         run = await self.repository.create(
             workflow_id=data.workflow_id,
             run_mode=data.mode,  # DB model uses 'run_mode'
             inputs=data.input_data,  # DB model uses 'inputs'
-            provider=Provider.GEMINI,  # TODO: Get from active settings
+            provider=db_provider,  # Use provider from request
             status=RunStatus.QUEUED  # Initial state
         )
         
-        self.logger.info(f"Run created: {run.id}", run_id=run.id)
+        self.logger.info(f"Run created: {run.id} with provider {db_provider.value}", run_id=run.id)
         
         return RunResponse.model_validate(run)
     

@@ -36,7 +36,7 @@ class DeepSeekProvider(BaseProvider):
     def supported_models(self) -> list[str]:
         return [
             "deepseek-chat",
-            "deepseek-reasoner"
+            "deepseek-coder"
         ]
     
     @property

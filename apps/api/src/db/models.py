@@ -46,6 +46,8 @@ class Provider(str, enum.Enum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
     DEEPSEEK = "deepseek"
+    OPENROUTER = "openrouter"
+    GROQ = "groq"
 
 
 class Persona(str, enum.Enum):

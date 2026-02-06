@@ -133,6 +133,7 @@ class OutputFormatter:
         total_tokens = metrics.get("total_tokens", 0)
         duration = metrics.get("duration_seconds", 0)
         provider = metrics.get("provider", "unknown")
+        model = metrics.get("model", "unknown")
         iterations = metrics.get("iterations", 0)
         steps_executed = metrics.get("steps_executed", 0)
         
@@ -151,6 +152,7 @@ class OutputFormatter:
    • Output Tokens:       {output_tokens:,}
    • Total Tokens:        {total_tokens:,}
    • Provider:            {provider.title()}
+   • Model:               {model}
    • Iterations:          {iterations}
    • Steps Executed:      {steps_executed}
    • Completion Time:     {duration:.2f} seconds

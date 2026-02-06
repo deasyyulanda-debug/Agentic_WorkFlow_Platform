@@ -10,6 +10,8 @@ from .openai_provider import OpenAIProvider
 from .anthropic_provider import AnthropicProvider
 from .gemini_provider import GeminiProvider
 from .deepseek_provider import DeepSeekProvider
+from .openrouter_provider import OpenRouterProvider
+from .groq_provider import GroqProvider
 from core.exceptions import ValidationError
 
 
@@ -19,6 +21,8 @@ class ProviderType(str, Enum):
     ANTHROPIC = "anthropic"
     GEMINI = "gemini"
     DEEPSEEK = "deepseek"
+    OPENROUTER = "openrouter"
+    GROQ = "groq"
 
 
 class ProviderFactory:
@@ -35,7 +39,9 @@ class ProviderFactory:
         ProviderType.OPENAI: OpenAIProvider,
         ProviderType.ANTHROPIC: AnthropicProvider,
         ProviderType.GEMINI: GeminiProvider,
-        ProviderType.DEEPSEEK: DeepSeekProvider
+        ProviderType.DEEPSEEK: DeepSeekProvider,
+        ProviderType.OPENROUTER: OpenRouterProvider,
+        ProviderType.GROQ: GroqProvider
     }
     
     @classmethod

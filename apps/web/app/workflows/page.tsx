@@ -3,6 +3,7 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { workflowsApi } from "@/lib/api/workflows";
 import { runsApi } from "@/lib/api/runs";
+import { settingsApi } from "@/lib/api/settings";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -15,23 +16,34 @@ import { Input } from "@/components/ui/input";
 import { Workflow, Plus, Search, CheckCircle, XCircle, Play } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
 import { toast } from "sonner";
+import type { Provider } from "@/types/api";
 
 export default function WorkflowsPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<"all" | "active" | "inactive">("all");
+  const [selectedProvider, setSelectedProvider] = useState<Provider>("gemini");
 
   const { data, isLoading } = useQuery({
     queryKey: ["workflows", search],
     queryFn: () => workflowsApi.list({ search }),
   });
 
+  // Get available providers from settings
+  const { data: settings } = useQuery({
+    queryKey: ["settings"],
+    queryFn: () => settingsApi.list(),
+  });
+
+  const activeProviders = settings?.filter(s => s.is_active).map(s => s.provider) || [];
+
   const executeWorkflow = useMutation({
     mutationFn: (workflowId: string) => 
       runsApi.executeAsync({ 
         workflow_id: workflowId,
         input_data: {},
-        mode: "test_run"
+        mode: "test_run",
+        provider: selectedProvider
       }),
     onSuccess: (data) => {
       toast.success("Workflow execution started!");
@@ -79,6 +91,27 @@ export default function WorkflowsPage() {
                 className="pl-9"
               />
             </div>
+            
+            {/* Provider Selector */}
+            <div className="flex items-center gap-2">
+              <label htmlFor="provider" className="text-sm font-medium whitespace-nowrap">
+                Provider:
+              </label>
+              <select
+                id="provider"
+                value={selectedProvider}
+                onChange={(e) => setSelectedProvider(e.target.value as Provider)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+              >
+                <option value="openai">OpenAI</option>
+                <option value="anthropic">Anthropic</option>
+                <option value="gemini">Gemini</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="openrouter">OpenRouter</option>
+                <option value="groq">Groq</option>
+              </select>
+            </div>
+            
             <div className="flex gap-2">
               <Button
                 variant={activeFilter === "all" ? "default" : "outline"}

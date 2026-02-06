@@ -63,4 +63,10 @@ export const settingsApi = {
     const response = await apiClient.post(`/settings/${id}/test`);
     return response.data;
   },
+
+  // Get available models for a provider
+  getModels: async (provider: Provider): Promise<string[]> => {
+    const response = await apiClient.get(`/settings/models/${provider}`);
+    return response.data;
+  },
 };

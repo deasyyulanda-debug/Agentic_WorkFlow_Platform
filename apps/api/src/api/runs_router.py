@@ -70,7 +70,7 @@ async def create_and_execute_run(
 ):
     """Create and execute run synchronously"""
     service = RunService(session)
-    engine = WorkflowEngine()
+    engine = WorkflowEngine(session)
     
     try:
         # Create run
@@ -236,7 +236,7 @@ async def execute_run(
 ):
     """Execute existing run"""
     service = RunService(session)
-    engine = WorkflowEngine()
+    engine = WorkflowEngine(session)
     
     try:
         # Check run exists and is in QUEUED status

@@ -194,6 +194,8 @@ export default function SettingsPage() {
                       <option value="anthropic">Anthropic (Claude)</option>
                       <option value="gemini">Google Gemini</option>
                       <option value="deepseek">DeepSeek</option>
+                      <option value="openrouter">OpenRouter</option>
+                      <option value="groq">Groq</option>
                     </select>
                   </div>
 

@@ -94,14 +94,19 @@ export default function RunDetailPage() {
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">Started</div>
-                      <div className="font-medium">
-                        {new Date(run.created_at).toLocaleString()}
+                      <div className="font-medium whitespace-nowrap">
+                        {new Date(run.created_at).toLocaleString()} (UTC)
                       </div>
                     </div>
                     <div>
-                      <div className="text-sm text-muted-foreground">Updated</div>
-                      <div className="font-medium">
-                        {new Date(run.updated_at).toLocaleString()}
+                      <div className="text-sm text-muted-foreground">Completed</div>
+                      <div className="font-medium whitespace-nowrap">
+                        {run.completed_at 
+                          ? `${new Date(run.completed_at).toLocaleString()} (UTC)`
+                          : run.started_at 
+                            ? `${new Date(run.started_at).toLocaleString()} (UTC)`
+                            : 'N/A'
+                        }
                       </div>
                     </div>
                   </div>

@@ -267,12 +267,30 @@ class WorkflowEngine:
         total_tokens = 0
         iteration_count = 0
         
-        # Get provider settings (assuming first active settings)
-        all_settings = await self.settings_service.list_settings(active_only=True, tested_only=False)
-        if not all_settings:
-            raise WorkflowExecutionError("No active provider settings found", run_id)
+        # Get provider settings - try to use the provider specified in the run
+        provider_settings = None
+        if run.provider:
+            self.logger.info(
+                f"Looking for settings for provider: {run.provider} (type: {type(run.provider).__name__}, value: {run.provider.value if hasattr(run.provider, 'value') else run.provider})",
+                run_id=run_id
+            )
+            provider_settings = await self.settings_service.get_settings_by_provider(run.provider)
+            if provider_settings:
+                self.logger.info(f"Found settings for provider: {provider_settings.provider}", run_id=run_id)
+            else:
+                self.logger.warning(f"No settings found for provider: {run.provider}", run_id=run_id)
         
-        provider_settings = all_settings[0]  # Use first available
+        # Fallback to first active provider if run.provider not set or has no settings
+        if not provider_settings:
+            self.logger.warning(
+                f"No settings found for run.provider ({run.provider.value if run.provider else 'None'}). Using first active provider as fallback.",
+                run_id=run_id
+            )
+            all_settings = await self.settings_service.list_settings(active_only=True, tested_only=False)
+            if not all_settings:
+                raise WorkflowExecutionError("No active provider settings found", run_id)
+            provider_settings = all_settings[0]
+            self.logger.info(f"Using fallback provider: {provider_settings.provider}", run_id=run_id)
         
         # Get decrypted API key
         api_key = await self.settings_service.get_decrypted_api_key(provider_settings.id)
@@ -305,14 +323,49 @@ class WorkflowEngine:
                 raise TokenLimitExceededError(max_tokens, run_id)
             
             # Execute step
-            # Use model from step config, or default based on provider
-            model = step.get("model", "gemini-2.0-flash" if provider_settings.provider.value == "gemini" else "gpt-4")
+            # Check if step has its own settings_id (per-step provider)
+            step_provider_settings = provider_settings  # Default to run-level provider
+            step_provider = provider  # Default to run-level provider
+            
+            if step.get("settings_id"):
+                # Step has its own provider settings
+                try:
+                    step_provider_settings = await self.settings_service.get_settings_by_id(step["settings_id"])
+                    if step_provider_settings:
+                        # Get API key and create provider for this step
+                        step_api_key = await self.settings_service.get_decrypted_api_key(step_provider_settings.id)
+                        step_provider = get_provider(
+                            step_provider_settings.provider.value,
+                            step_api_key
+                        )
+                        self.logger.info(
+                            f"Step {step_index} using provider: {step_provider_settings.provider.value}",
+                            run_id=run_id
+                        )
+                except Exception as e:
+                    self.logger.warning(
+                        f"Failed to load step-specific provider settings, using run-level provider: {e}",
+                        run_id=run_id
+                    )
+            
+            # Use model from step config, or default based on the step's provider
+            provider_defaults = {
+                "gemini": "gemini-2.0-flash",
+                "openai": "gpt-5.2-2025-12-11",
+                "anthropic": "claude-sonnet-4-20250514",
+                "deepseek": "deepseek-chat",
+                "openrouter": "openai/gpt-5.2",
+                "groq": "llama-3.3-70b-versatile"
+            }
+            default_model = provider_defaults.get(step_provider_settings.provider.value, "gpt-5.2-2025-12-11")
+            model = step.get("model", default_model)
+            
             step_result = await self._execute_step(
                 run_id,
                 step,
                 step_index,
                 context,
-                provider,
+                step_provider,  # Use step-specific provider
                 model
             )
             
@@ -340,7 +393,8 @@ class WorkflowEngine:
             "duration_seconds": duration,
             "steps_executed": len(steps),
             "iterations": iteration_count,
-            "provider": provider_settings.provider.value
+            "provider": step_provider_settings.provider.value,  # Use step-level provider for metrics
+            "model": model  # Add the model that was used
         }
         
         output_data = {

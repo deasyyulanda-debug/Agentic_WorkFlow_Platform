@@ -1,7 +1,7 @@
 // API Response Types
 // Generated from backend FastAPI schemas
 
-export type Provider = "openai" | "anthropic" | "gemini" | "deepseek";
+export type Provider = "openai" | "anthropic" | "gemini" | "deepseek" | "openrouter" | "groq";
 
 export type Persona = 
   | "student"
@@ -118,6 +118,7 @@ export interface RunCreate {
   workflow_id: string;
   input_data: Record<string, any>;
   mode?: RunMode;
+  provider?: Provider;
 }
 
 export interface RunExecutionResult {

@@ -28,10 +28,12 @@ export default function NewWorkflowPage() {
   const [steps, setSteps] = useState<Array<{
     prompt: string;
     settings_id: string;
+    model?: string;
     type?: string;
   }>>([
-    { prompt: "", settings_id: "", type: "prompt" },
+    { prompt: "", settings_id: "", model: "", type: "prompt" },
   ]);
+  const [availableModels, setAvailableModels] = useState<Record<number, string[]>>({});
 
   const { data: settingsData } = useQuery({
     queryKey: ["settings"],
@@ -55,7 +57,7 @@ export default function NewWorkflowPage() {
   const handleAddStep = () => {
     setSteps([
       ...steps,
-      { prompt: "", settings_id: "", type: "prompt" },
+      { prompt: "", settings_id: "", model: "", type: "prompt" },
     ]);
   };
 
@@ -67,9 +69,25 @@ export default function NewWorkflowPage() {
     setSteps(steps.filter((_, i) => i !== index));
   };
 
-  const handleStepChange = (index: number, field: string, value: any) => {
+  const handleStepChange = async (index: number, field: string, value: any) => {
     const newSteps = [...steps];
     newSteps[index] = { ...newSteps[index], [field]: value };
+    
+    // If provider changed, fetch available models
+    if (field === "settings_id" && value) {
+      const selectedSetting = activeSettings.find(s => s.id === value);
+      if (selectedSetting) {
+        try {
+          const models = await settingsApi.getModels(selectedSetting.provider);
+          setAvailableModels(prev => ({ ...prev, [index]: models }));
+          // Reset model selection when provider changes
+          newSteps[index].model = "";
+        } catch (error) {
+          console.error("Failed to fetch models:", error);
+        }
+      }
+    }
+    
     setSteps(newSteps);
   };
 
@@ -95,6 +113,7 @@ export default function NewWorkflowPage() {
           type: "prompt",
           template: step.prompt,
           settings_id: step.settings_id,
+          model: step.model || undefined, // Include model if selected
         })),
       },
       is_active: true,
@@ -223,6 +242,28 @@ export default function NewWorkflowPage() {
                         ))}
                       </select>
                     </div>
+
+                    {/* Model Selection - shown only when provider is selected */}
+                    {step.settings_id && availableModels[index] && (
+                      <div className="space-y-2">
+                        <Label>Model (optional)</Label>
+                        <select
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          value={step.model || ""}
+                          onChange={(e) => handleStepChange(index, "model", e.target.value)}
+                        >
+                          <option value="">Use default model</option>
+                          {availableModels[index].map((model) => (
+                            <option key={model} value={model}>
+                              {model}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-muted-foreground">
+                          Choose a specific model or leave blank to use the provider default
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ))}
               </CardContent>

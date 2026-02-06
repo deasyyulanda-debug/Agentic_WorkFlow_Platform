@@ -30,13 +30,12 @@ class OpenAIProvider(BaseProvider):
     @property
     def supported_models(self) -> list[str]:
         return [
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4-turbo",
-            "gpt-4",
-            "gpt-3.5-turbo",
-            "o1-preview",
-            "o1-mini"
+            "o3-deep-research-2025-06-26",
+            "gpt-5.2-pro-2025-12-11",
+            "gpt-5.2-2025-12-11",
+            "o4-mini-deep-research-2025-06-26",
+            "gpt-5.2-codex",
+            "gpt-5-mini-2025-08-07"
         ]
     
     @property
