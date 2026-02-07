@@ -46,6 +46,7 @@ export interface DocumentUploadResponse {
 
 export interface RAGQueryResponse {
   query: string;
+  answer: string | null;
   results: Array<{
     content: string;
     metadata: Record<string, any>;
@@ -131,7 +132,7 @@ export const ragApi = {
   ): Promise<RAGQueryResponse> => {
     const response = await apiClient.post(
       `/rag/pipelines/${pipelineId}/query`,
-      { query, top_k: topK }
+      { query, top_k: topK, generate_answer: true }
     );
     return response.data;
   },

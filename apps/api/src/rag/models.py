@@ -151,6 +151,10 @@ class RAGQueryRequest(BaseModel):
         default=None, ge=1, le=50,
         description="Override default top_k"
     )
+    generate_answer: bool = Field(
+        default=True,
+        description="Whether to generate an LLM-synthesized answer from retrieved chunks"
+    )
 
     model_config = ConfigDict(extra='forbid')
 
@@ -183,6 +187,10 @@ class RetrievedChunk(BaseModel):
 class RAGQueryResponse(BaseModel):
     """Response from querying a RAG pipeline"""
     query: str
+    answer: Optional[str] = Field(
+        default=None,
+        description="LLM-generated answer synthesized from retrieved context"
+    )
     results: List[RetrievedChunk]
     total_results: int
     pipeline_id: str

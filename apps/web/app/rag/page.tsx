@@ -715,30 +715,53 @@ export default function RAGPipelinePage() {
 
                   {/* Query Results */}
                   {queryResults && (
-                    <div className="space-y-3 mt-4">
-                      <h4 className="font-semibold">
-                        Results ({queryResults.total_results} found)
-                      </h4>
-                      {queryResults.results.map((result, i) => (
-                        <Card key={i} className="bg-muted/50">
-                          <CardContent className="py-3">
-                            <div className="flex items-start justify-between mb-2">
-                              <Badge variant="outline">
-                                <FileText className="mr-1 h-3 w-3" />
-                                {result.metadata?.file_name || "Unknown"}
-                              </Badge>
-                              {result.score !== null && result.score !== undefined && (
-                                <Badge variant="secondary">
-                                  Score: {(result.score * 100).toFixed(1)}%
-                                </Badge>
-                              )}
+                    <div className="space-y-4 mt-4">
+                      {/* LLM-Generated Answer */}
+                      {queryResults.answer && (
+                        <Card className="border-2 border-primary/30 bg-primary/5">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lg flex items-center gap-2">
+                              <Zap className="h-5 w-5 text-primary" />
+                              AI-Generated Answer
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                              {queryResults.answer}
                             </div>
-                            <p className="text-sm whitespace-pre-wrap">
-                              {result.content}
-                            </p>
                           </CardContent>
                         </Card>
-                      ))}
+                      )}
+
+                      {/* Source Chunks */}
+                      <details className="group">
+                        <summary className="cursor-pointer font-semibold text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
+                          <Layers className="h-4 w-4" />
+                          Source Chunks ({queryResults.total_results} retrieved)
+                        </summary>
+                        <div className="mt-3 space-y-3">
+                          {queryResults.results.map((result, i) => (
+                            <Card key={i} className="bg-muted/50">
+                              <CardContent className="py-3">
+                                <div className="flex items-start justify-between mb-2">
+                                  <Badge variant="outline">
+                                    <FileText className="mr-1 h-3 w-3" />
+                                    {result.metadata?.file_name || "Unknown"}
+                                  </Badge>
+                                  {result.score !== null && result.score !== undefined && (
+                                    <Badge variant="secondary">
+                                      Score: {(result.score * 100).toFixed(1)}%
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm whitespace-pre-wrap">
+                                  {result.content}
+                                </p>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </details>
                     </div>
                   )}
                 </CardContent>

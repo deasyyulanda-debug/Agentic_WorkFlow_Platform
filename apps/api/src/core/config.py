@@ -8,7 +8,7 @@ from typing import Optional
 import os
 
 # Get the project root directory (parent of src/)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 class Settings(BaseSettings):

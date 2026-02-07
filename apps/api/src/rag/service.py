@@ -304,10 +304,126 @@ class RAGService:
 
         return RAGQueryResponse(
             query=request.query,
+            answer=await self._generate_answer(request.query, retrieved_chunks)
+            if request.generate_answer and retrieved_chunks
+            else None,
             results=retrieved_chunks,
             total_results=len(retrieved_chunks),
             pipeline_id=pipeline_id,
         )
+
+    async def _generate_answer(
+        self, query: str, chunks: List[RetrievedChunk]
+    ) -> Optional[str]:
+        """
+        Generate a synthesized answer using an LLM (Google Gemini preferred)
+        based on the retrieved context chunks.
+        """
+        # Build context from top chunks
+        context_parts = []
+        for i, chunk in enumerate(chunks):
+            source = chunk.metadata.get("file_name", "Unknown")
+            context_parts.append(
+                f"[Source: {source}, Chunk {i + 1}]\n{chunk.content}"
+            )
+        context = "\n\n---\n\n".join(context_parts)
+
+        system_prompt = (
+            "You are a precise research assistant that answers questions based ONLY on the "
+            "provided context. Follow these rules:\n"
+            "1. Answer the user's question using ONLY information from the context below.\n"
+            "2. If the context doesn't contain enough information, say so clearly.\n"
+            "3. Be concise, well-structured, and use bullet points when asked.\n"
+            "4. Cite which source/chunk your information comes from when relevant.\n"
+            "5. Do NOT make up information that is not in the context.\n"
+        )
+
+        user_prompt = (
+            f"Context from documents:\n\n{context}\n\n"
+            f"---\n\n"
+            f"Question: {query}\n\n"
+            f"Please provide a clear, well-structured answer based on the context above."
+        )
+
+        # Try Google Gemini first (user has a Google API key)
+        answer = await self._call_gemini(system_prompt, user_prompt)
+        if answer:
+            return answer
+
+        # Fallback: Try OpenAI
+        answer = await self._call_openai(system_prompt, user_prompt)
+        if answer:
+            return answer
+
+        # Fallback: Try Anthropic
+        answer = await self._call_anthropic(system_prompt, user_prompt)
+        if answer:
+            return answer
+
+        self.logger.warning("No LLM provider available for answer generation")
+        return None
+
+    async def _call_gemini(self, system_prompt: str, user_prompt: str) -> Optional[str]:
+        """Call Google Gemini API for answer generation."""
+        api_key = settings.GOOGLE_API_KEY
+        if not api_key:
+            return None
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(
+                "gemini-2.0-flash",
+                system_instruction=system_prompt,
+            )
+            response = model.generate_content(user_prompt)
+            if response and response.text:
+                return response.text
+        except Exception as e:
+            self.logger.warning(f"Gemini answer generation failed: {e}")
+        return None
+
+    async def _call_openai(self, system_prompt: str, user_prompt: str) -> Optional[str]:
+        """Call OpenAI API for answer generation."""
+        api_key = settings.OPENAI_API_KEY
+        if not api_key:
+            return None
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                max_tokens=1500,
+                temperature=0.3,
+            )
+            if response.choices:
+                return response.choices[0].message.content
+        except Exception as e:
+            self.logger.warning(f"OpenAI answer generation failed: {e}")
+        return None
+
+    async def _call_anthropic(self, system_prompt: str, user_prompt: str) -> Optional[str]:
+        """Call Anthropic API for answer generation."""
+        api_key = settings.ANTHROPIC_API_KEY
+        if not api_key:
+            return None
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model="claude-3-5-haiku-latest",
+                max_tokens=1500,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            if response.content:
+                return response.content[0].text
+        except Exception as e:
+            self.logger.warning(f"Anthropic answer generation failed: {e}")
+        return None
 
     # ========================================================================
     # Private helpers
@@ -327,16 +443,14 @@ class RAGService:
             return content.decode("utf-8", errors="replace")
 
         elif file_ext == ".pdf":
-            # Try to extract text from PDF
-            try:
-                import io
-                # Use built-in basic PDF text extraction
-                text = self._extract_pdf_text(content)
-                if text.strip():
-                    return text
-            except Exception:
-                pass
-            return content.decode("utf-8", errors="replace")
+            text = self._extract_pdf_text(content)
+            if text.strip():
+                return text
+            raise ValueError(
+                "Could not extract readable text from the PDF. "
+                "The file may be image-based (scanned). "
+                "Please use a text-based PDF or OCR the document first."
+            )
 
         elif file_ext == ".json":
             return content.decode("utf-8", errors="replace")
@@ -346,22 +460,126 @@ class RAGService:
             return content.decode("utf-8", errors="replace")
 
     def _extract_pdf_text(self, content: bytes) -> str:
-        """Basic PDF text extraction without external dependencies."""
-        # Simple extraction: find text between BT and ET markers
-        # This is a minimal approach — for production, use PyPDF2 or pdfplumber
-        text_parts = []
+        """
+        Extract clean text from a PDF.
+        Uses PyPDF2 (primary — best word spacing) with pdfplumber as fallback.
+        Includes post-processing to fix spacing and remove noise.
+        """
+        import io
+        text = ""
+
+        # Strategy 1: PyPDF2 (best word spacing for most PDFs)
         try:
-            raw = content.decode("latin-1")
-            # Find text objects in PDF
-            import re
-            # Extract text from PDF content streams
-            for match in re.finditer(r'\(([^)]*)\)', raw):
-                text = match.group(1)
-                if len(text) > 2:
-                    text_parts.append(text)
-        except Exception:
-            pass
-        return " ".join(text_parts)
+            from PyPDF2 import PdfReader
+            reader = PdfReader(io.BytesIO(content))
+            pages_text = []
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    pages_text.append(page_text)
+            text = "\n\n".join(pages_text)
+        except Exception as e:
+            self.logger.warning(f"PyPDF2 extraction failed: {e}")
+
+        # Strategy 2: Fallback to pdfplumber
+        if not text.strip():
+            try:
+                import pdfplumber
+                with pdfplumber.open(io.BytesIO(content)) as pdf:
+                    pages_text = []
+                    for page in pdf.pages:
+                        page_text = page.extract_text(
+                            x_tolerance=3,
+                            y_tolerance=3,
+                        )
+                        if page_text:
+                            # Fix concatenated words from pdfplumber
+                            page_text = self._fix_word_spacing(page_text)
+                            pages_text.append(page_text)
+                    text = "\n\n".join(pages_text)
+            except Exception as e:
+                self.logger.warning(f"pdfplumber extraction failed: {e}")
+
+        # Post-process: clean up the extracted text
+        text = self._clean_extracted_text(text)
+        return text
+
+    def _fix_word_spacing(self, text: str) -> str:
+        """
+        Fix concatenated words from poor PDF extraction.
+        Inserts spaces before camelCase transitions (lowercaseUppercase).
+        """
+        # Insert space before uppercase letter preceded by lowercase letter
+        # e.g., "TherapidproliferationofLLM" → "The rapid proliferation of LLM"
+        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+        # Insert space between a letter and a digit boundary if words are jammed
+        text = re.sub(r'([a-zA-Z])(\d)', r'\1 \2', text)
+        text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
+        return text
+
+    def _clean_extracted_text(self, text: str) -> str:
+        """
+        Clean extracted text by removing binary noise, non-printable characters,
+        PDF metadata artifacts, and excessive whitespace.
+        """
+        if not text:
+            return ""
+
+        # Remove non-printable / control characters (keep newlines, tabs, spaces)
+        text = re.sub(r'[^\x20-\x7E\n\t\r]', ' ', text)
+
+        # Remove PDF internal markers and metadata noise
+        pdf_noise_patterns = [
+            r'endstream',
+            r'endobj',
+            r'\d+\s+\d+\s+obj',
+            r'<<[^>]*>>',
+            r'/\w+\s*\[?[^\]]*\]?',
+            r'stream\s*$',
+            r'xref',
+            r'trailer',
+            r'startxref',
+            r'%%EOF',
+            r'\\[()]',  # escaped parens
+            r'tex2pdf:\w+',
+            r'Doc-Start',
+            r'cite\.\d+@\w+',
+            r'section\.\d+',
+            r'subsection\.\d+\.\d+',
+            r'subsubsection\.\d+\.\d+\.\d+',
+            r'page\.\d+',
+            r'Item\.\d+',
+            r'figure\.\d+',
+        ]
+        for pattern in pdf_noise_patterns:
+            text = re.sub(pattern, ' ', text, flags=re.MULTILINE)
+
+        # Collapse multiple spaces into one
+        text = re.sub(r'[ \t]+', ' ', text)
+
+        # Collapse multiple blank lines into at most two newlines
+        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+
+        # Remove lines that are mostly non-alpha (binary residue)
+        clean_lines = []
+        for line in text.split('\n'):
+            line = line.strip()
+            if not line:
+                clean_lines.append('')
+                continue
+            # Count alphabetic characters vs total
+            alpha_count = sum(1 for c in line if c.isalpha())
+            if len(line) > 0 and alpha_count / len(line) > 0.3:
+                clean_lines.append(line)
+            # Also keep short lines that look like headings/numbers
+            elif len(line) < 80 and alpha_count > 3:
+                clean_lines.append(line)
+
+        text = '\n'.join(clean_lines)
+
+        # Final trim
+        text = text.strip()
+        return text
 
     def _chunk_text(
         self,

@@ -1,7 +1,8 @@
 import axios from "axios";
 
-// API Base URL - configure based on environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+// API Base URL - use relative path so requests proxy through Next.js rewrites
+// This ensures it works in Codespaces/remote environments where localhost isn't reachable from the browser
+const API_BASE_URL = "/api/v1";
 
 // Create axios instance with default config
 export const apiClient = axios.create({
