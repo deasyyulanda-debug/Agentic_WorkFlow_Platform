@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
 import { ragApi } from "@/lib/api/rag";
 import type {
   RAGPipeline,
@@ -53,8 +54,13 @@ export default function RAGPipelinePage() {
   const [chunkStrategy, setChunkStrategy] = useState("recursive");
   const [chunkSize, setChunkSize] = useState(1000);
   const [chunkOverlap, setChunkOverlap] = useState(200);
-  const [embeddingProvider, setEmbeddingProvider] = useState("chroma_default");
-  const [topK, setTopK] = useState(5);
+  const [embeddingProvider, setEmbeddingProvider] = useState("bge_small");
+  const [topK, setTopK] = useState(10);
+  const [rerankingEnabled, setRerankingEnabled] = useState(true);
+  const [rerankingTopK, setRerankingTopK] = useState(5);
+  const [rerankerModel, setRerankerModel] = useState("qwen3");
+  const [llmProvider, setLlmProvider] = useState("gemini");
+  const [llmModel, setLlmModel] = useState("gemini-2.5-flash");
 
   // Query / Upload state
   const [queryText, setQueryText] = useState("");
@@ -152,8 +158,13 @@ export default function RAGPipelinePage() {
     setChunkStrategy("recursive");
     setChunkSize(1000);
     setChunkOverlap(200);
-    setEmbeddingProvider("chroma_default");
-    setTopK(5);
+    setEmbeddingProvider("bge_small");
+    setTopK(10);
+    setRerankingEnabled(true);
+    setRerankingTopK(5);
+    setRerankerModel("qwen3");
+    setLlmProvider("gemini");
+    setLlmModel("gemini-2.5-flash");
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -172,7 +183,13 @@ export default function RAGPipelinePage() {
       },
       embedding: { provider: embeddingProvider },
       vector_store: { store_type: "chroma" },
-      retrieval: { top_k: topK },
+      retrieval: {
+        top_k: topK,
+        reranking_enabled: rerankingEnabled,
+        reranking_top_k: rerankingTopK,
+        reranker_model: rerankerModel,
+      },
+      llm: { provider: llmProvider, model: llmModel },
     });
   };
 
@@ -499,16 +516,25 @@ export default function RAGPipelinePage() {
                       onChange={(e) => setEmbeddingProvider(e.target.value)}
                     >
                       {configOptions?.embedding_providers?.map((p) => (
-                        <option key={p.value} value={p.value}>
+                        <option key={p.value} value={p.value} title={p.description}>
                           {p.label}
                         </option>
                       )) || (
                         <>
-                          <option value="chroma_default">
-                            ChromaDB Default (all-MiniLM-L6-v2)
+                          <option value="bge_small">
+                            BGE-Small-EN v1.5 (Speed: Fast | Quality: Strong | Use: Best CPU Default)
                           </option>
-                          <option value="openai">
-                            OpenAI Embeddings
+                          <option value="chroma_default">
+                            all-MiniLM-L6-v2 (Speed: Fast | Quality: Good | Use: General &amp; Prototyping)
+                          </option>
+                          <option value="st_mpnet">
+                            all-mpnet-base-v2 (Speed: Medium | Quality: Better | Use: Production RAG)
+                          </option>
+                          <option value="st_roberta">
+                            all-roberta-large-v1 (Speed: Slow | Quality: Best | Use: High Accuracy)
+                          </option>
+                          <option value="qwen3_embed">
+                            Qwen3-Embedding-0.6B (Speed: Slow | Quality: SOTA | Use: GPU Recommended)
                           </option>
                         </>
                       )}
@@ -527,6 +553,133 @@ export default function RAGPipelinePage() {
                     />
                     <p className="text-xs text-muted-foreground">
                       Number of results returned per query (1–50)
+                    </p>
+                  </div>
+
+                  {/* Reranking Configuration */}
+                  <div className="border-t pt-4 mt-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <Label className="text-base font-semibold">Reranking</Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Re-scores retrieved chunks for better relevance (highly recommended)
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={rerankingEnabled}
+                          onChange={(e) => setRerankingEnabled(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+
+                    {rerankingEnabled && (
+                      <div className="space-y-3 pl-1">
+                        <div className="space-y-2">
+                          <Label>Reranker Model</Label>
+                          <select
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                            value={rerankerModel}
+                            onChange={(e) => setRerankerModel(e.target.value)}
+                          >
+                            {(configOptions as any)?.reranker_models?.map((r: any) => (
+                              <option key={r.value} value={r.value} title={r.description}>
+                                {r.label}
+                              </option>
+                            )) || (
+                              <>
+                                <option value="qwen3">Qwen3-Reranker-0.6B (Local, Free, High Quality)</option>
+                                <option value="llm">LLM-Based Reranking (Uses Pipeline LLM)</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Keep Top-K After Reranking</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={rerankingTopK}
+                            onChange={(e) =>
+                              setRerankingTopK(parseInt(e.target.value) || 5)
+                            }
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Retrieves {topK} chunks, reranks, keeps best {rerankingTopK}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* LLM Provider Configuration */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    LLM Provider
+                  </CardTitle>
+                  <CardDescription>
+                    Choose the LLM provider and model for answer generation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Provider</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={llmProvider}
+                      onChange={(e) => {
+                        const newProvider = e.target.value;
+                        setLlmProvider(newProvider);
+                        // Auto-select the default model for this provider
+                        const providerConfig = configOptions?.llm_providers?.find(
+                          (p) => p.value === newProvider
+                        );
+                        if (providerConfig?.models?.length) {
+                          const defaultModel = providerConfig.models.find((m) => m.default);
+                          setLlmModel(
+                            defaultModel?.value || providerConfig.models[0].value
+                          );
+                        }
+                      }}
+                    >
+                      {configOptions?.llm_providers?.map((p) => (
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                        </option>
+                      )) || (
+                        <option value="gemini">Google Gemini</option>
+                      )}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Model</Label>
+                    <select
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      value={llmModel}
+                      onChange={(e) => setLlmModel(e.target.value)}
+                    >
+                      {configOptions?.llm_providers
+                        ?.find((p) => p.value === llmProvider)
+                        ?.models?.map((m) => (
+                          <option key={m.value} value={m.value}>
+                            {m.label}
+                          </option>
+                        )) || (
+                        <option value="gemini-2.5-flash">
+                          Gemini 2.5 Flash
+                        </option>
+                      )}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Model used for answer generation and optional reranking
                     </p>
                   </div>
                 </CardContent>
@@ -624,10 +777,21 @@ export default function RAGPipelinePage() {
                     <div>
                       <div className="text-muted-foreground">Embedding</div>
                       <div className="text-lg font-bold">
-                        {selectedPipeline.config?.embedding?.provider ===
-                        "openai"
-                          ? "OpenAI"
-                          : "Default"}
+                        {(() => {
+                          const ep = selectedPipeline.config?.embedding?.provider;
+                          const labels: Record<string, string> = {
+                            bge_small: "BGE-Small-EN v1.5",
+                            chroma_default: "MiniLM-L6-v2",
+                            st_mpnet: "MPNet-base-v2",
+                            st_roberta: "RoBERTa-large-v1",
+                            qwen3_embed: "Qwen3-Embed-0.6B",
+                            openai: "OpenAI",
+                            google: "Google",
+                            sentence_transformers: "Sentence Transformers",
+                            huggingface: "HuggingFace",
+                          };
+                          return labels[ep || "chroma_default"] || ep || "Default";
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -717,7 +881,7 @@ export default function RAGPipelinePage() {
                   {queryResults && (
                     <div className="space-y-4 mt-4">
                       {/* LLM-Generated Answer */}
-                      {queryResults.answer && (
+                      {queryResults.answer ? (
                         <Card className="border-2 border-primary/30 bg-primary/5">
                           <CardHeader className="pb-2">
                             <CardTitle className="text-lg flex items-center gap-2">
@@ -726,18 +890,28 @@ export default function RAGPipelinePage() {
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="prose prose-sm max-w-none whitespace-pre-wrap">
-                              {queryResults.answer}
+                            <div className="prose prose-sm max-w-none dark:prose-invert">
+                              <ReactMarkdown>{queryResults.answer}</ReactMarkdown>
                             </div>
                           </CardContent>
                         </Card>
-                      )}
+                      ) : queryResults.results.length > 0 ? (
+                        <Card className="border-2 border-yellow-500/30 bg-yellow-500/5">
+                          <CardContent className="py-3">
+                            <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                              ⚠️ Answer generation failed (LLM quota may be exhausted). Showing retrieved chunks below.
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ) : null}
 
                       {/* Source Chunks */}
-                      <details className="group">
+                      <details className="group" open>
                         <summary className="cursor-pointer font-semibold text-sm text-muted-foreground hover:text-foreground flex items-center gap-2">
                           <Layers className="h-4 w-4" />
-                          Source Chunks ({queryResults.total_results} retrieved)
+                          Source Chunks ({queryResults.total_results} retrieved
+                          {queryResults.reranking_applied && " · reranked"}
+                          {queryResults.query_time_ms && ` · ${(queryResults.query_time_ms / 1000).toFixed(1)}s`})
                         </summary>
                         <div className="mt-3 space-y-3">
                           {queryResults.results.map((result, i) => (

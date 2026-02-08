@@ -31,7 +31,11 @@ class TestRAGPipelineAPI:
         # Verify defaults
         assert data["defaults"]["chunk_size"] == 1000
         assert data["defaults"]["chunk_overlap"] == 200
-        assert data["defaults"]["top_k"] == 5
+        assert data["defaults"]["top_k"] == 10
+        assert data["defaults"]["reranking_enabled"] == True
+        assert data["defaults"]["reranking_top_k"] == 5
+        assert data["defaults"]["reranker_model"] == "qwen3"
+        assert data["defaults"]["embedding_provider"] == "bge_small"
 
     @pytest.mark.asyncio
     async def test_create_pipeline(self, client: AsyncClient):

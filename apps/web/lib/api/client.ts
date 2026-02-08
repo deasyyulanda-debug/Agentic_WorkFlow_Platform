@@ -4,10 +4,26 @@ import axios from "axios";
 // This ensures it works in Codespaces/remote environments where localhost isn't reachable from the browser
 const API_BASE_URL = "/api/v1";
 
+// Direct backend URL for heavy operations (bypasses Next.js proxy timeout)
+const DIRECT_API_URL =
+  (typeof window !== "undefined"
+    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000") + "/api/v1";
+
 // Create axios instance with default config
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000,
+  timeout: 120000, // 2 minutes - allows time for model inference on CPU
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Direct client for heavy operations (reranking, query w/ LLM answer generation)
+// Bypasses the Next.js rewrite proxy which has its own timeout
+export const directApiClient = axios.create({
+  baseURL: DIRECT_API_URL,
+  timeout: 300000, // 5 minutes - heavy CPU-bound model inference
   headers: {
     "Content-Type": "application/json",
   },
