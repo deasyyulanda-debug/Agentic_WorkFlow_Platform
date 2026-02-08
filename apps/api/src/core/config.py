@@ -62,6 +62,14 @@ class Settings(BaseSettings):
         default=None,
         description="DeepSeek API key (optional)"
     )
+    GROQ_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Groq API key (optional)"
+    )
+    OPENROUTER_API_KEY: Optional[str] = Field(
+        default=None,
+        description="OpenRouter API key (optional)"
+    )
     
     # Run Execution Limits (Test-Run Mode)
     TEST_RUN_MAX_TOKENS: int = Field(

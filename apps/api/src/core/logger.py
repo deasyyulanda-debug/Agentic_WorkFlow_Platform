@@ -112,11 +112,16 @@ class JSONFormatter(logging.Formatter):
         Returns:
             JSON-formatted log string
         """
+        try:
+            message = record.getMessage()
+        except Exception:
+            message = str(record.msg)
+
         log_data = {
             "timestamp": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
+            "message": message,
             "module": record.module,
             "function": record.funcName,
             "line": record.lineno,

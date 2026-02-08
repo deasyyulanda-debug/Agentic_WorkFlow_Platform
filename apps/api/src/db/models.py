@@ -238,6 +238,103 @@ class Artifact(Base):
 
 
 # ============================================================================
+# RAG Pipeline Models
+# ============================================================================
+
+class RAGPipelineStatus(str, enum.Enum):
+    """RAG Pipeline lifecycle status"""
+    CREATED = "created"
+    INGESTING = "ingesting"
+    READY = "ready"
+    ERROR = "error"
+
+
+class RAGPipelineDB(Base):
+    """
+    RAG Pipeline definitions - persisted to database.
+    Stores pipeline config, status, and metadata.
+    """
+    __tablename__ = "rag_pipelines"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # Basic info
+    name = Column(String(255), nullable=False)
+    description = Column(Text, default="", nullable=False)
+    status = Column(Enum(RAGPipelineStatus), default=RAGPipelineStatus.CREATED, nullable=False)
+
+    # Configuration (JSON)
+    chunking_config = Column(JSON, nullable=False)    # strategy, chunk_size, chunk_overlap
+    embedding_config = Column(JSON, nullable=False)    # provider, model
+    vector_store_config = Column(JSON, nullable=False)  # store_type, collection_name
+    retrieval_config = Column(JSON, nullable=False)    # top_k, score_threshold, reranking
+    llm_config = Column(JSON, nullable=False, default={"provider": "gemini", "model": "gemini-2.5-flash"})  # provider, model
+
+    # Stats
+    document_count = Column(Integer, default=0, nullable=False)
+    chunk_count = Column(Integer, default=0, nullable=False)
+    total_queries = Column(Integer, default=0, nullable=False)
+    last_query_at = Column(DateTime, nullable=True)
+
+    # Audit timestamps
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    # Relationships
+    documents = relationship("RAGDocumentDB", back_populates="pipeline", cascade="all, delete-orphan")
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_rag_pipelines_status', 'status'),
+        Index('idx_rag_pipelines_created_at', 'created_at'),
+    )
+
+    def __repr__(self):
+        return f"<RAGPipeline(id={self.id}, name={self.name}, status={self.status})>"
+
+
+class RAGDocumentDB(Base):
+    """
+    Documents ingested into RAG pipelines.
+    Tracks individual document metadata and chunk information.
+    """
+    __tablename__ = "rag_documents"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+
+    # Relationships
+    pipeline_id = Column(String(36), ForeignKey("rag_pipelines.id"), nullable=False)
+    pipeline = relationship("RAGPipelineDB", back_populates="documents")
+
+    # Document metadata
+    file_name = Column(String(500), nullable=False)
+    file_size_bytes = Column(Integer, nullable=False)
+    file_type = Column(String(20), nullable=False)  # .pdf, .txt, .md, etc.
+    chunk_count = Column(Integer, default=0, nullable=False)
+
+    # Processing metadata
+    status = Column(String(20), default="processed", nullable=False)  # processed, error
+    error_message = Column(Text, nullable=True)
+    processing_time_ms = Column(Integer, nullable=True)
+
+    # Content stats
+    character_count = Column(Integer, nullable=True)
+    word_count = Column(Integer, nullable=True)
+
+    # Audit timestamps
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+
+    # Indexes
+    __table_args__ = (
+        Index('idx_rag_documents_pipeline_id', 'pipeline_id'),
+        Index('idx_rag_documents_file_name', 'file_name'),
+    )
+
+    def __repr__(self):
+        return f"<RAGDocument(id={self.id}, file={self.file_name}, pipeline={self.pipeline_id})>"
+
+
+# ============================================================================
 # Future Models (Placeholder for multi-user feature)
 # ============================================================================
 

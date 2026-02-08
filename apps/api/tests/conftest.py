@@ -18,6 +18,7 @@ from main import app
 from db.database import Base, get_db
 from core.config import settings
 from core.security import init_security
+from rag.service import set_session_factory, get_rag_service
 
 # Test database URL (in-memory SQLite)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
@@ -65,7 +66,7 @@ async def test_db_session(test_db_engine) -> AsyncGenerator[AsyncSession, None]:
 
 
 @pytest.fixture(scope="function")
-async def client(test_db_session) -> AsyncGenerator[AsyncClient, None]:
+async def client(test_db_engine, test_db_session) -> AsyncGenerator[AsyncClient, None]:
     """Create test client with test database"""
     
     # Override database dependency
@@ -73,6 +74,18 @@ async def client(test_db_session) -> AsyncGenerator[AsyncClient, None]:
         yield test_db_session
     
     app.dependency_overrides[get_db] = override_get_db
+    
+    # Override RAG service session factory to use test DB
+    test_session_factory = async_sessionmaker(
+        test_db_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+    set_session_factory(test_session_factory)
+    
+    # Reset RAG service singleton so it uses the test DB
+    import rag.service as rag_module
+    rag_module._rag_service = None
     
     # Initialize security
     init_security(settings.SECRET_KEY)
@@ -84,6 +97,8 @@ async def client(test_db_session) -> AsyncGenerator[AsyncClient, None]:
     
     # Clean up
     app.dependency_overrides.clear()
+    set_session_factory(None)
+    rag_module._rag_service = None
 
 
 @pytest.fixture
