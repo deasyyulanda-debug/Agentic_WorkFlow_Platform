@@ -104,7 +104,7 @@ class RAGService:
 
     def _pipeline_to_response(self, db_pipeline: RAGPipelineDB) -> RAGPipelineResponse:
         """Convert DB model to response model."""
-        llm_config = getattr(db_pipeline, 'llm_config', None) or {"provider": "gemini", "model": "gemini-2.5-flash"}
+        llm_config = getattr(db_pipeline, 'llm_config', None) or {"provider": "gemini", "model": "gemini-2.5-pro"}
         return RAGPipelineResponse(
             id=db_pipeline.id,
             name=db_pipeline.name,
@@ -351,7 +351,7 @@ class RAGService:
                     "embedding": db_pipeline.embedding_config,
                     "vector_store": db_pipeline.vector_store_config,
                     "retrieval": db_pipeline.retrieval_config,
-                    "llm": getattr(db_pipeline, 'llm_config', None) or {"provider": "gemini", "model": "gemini-2.5-flash"},
+                    "llm": getattr(db_pipeline, 'llm_config', None) or {"provider": "gemini", "model": "gemini-2.5-pro"},
                 },
                 embedding_provider=db_pipeline.embedding_config.get("provider", "chroma_default"),
                 chunking_strategy=db_pipeline.chunking_config.get("strategy", "recursive"),
@@ -551,7 +551,7 @@ class RAGService:
                 )
 
             retrieval_config = db_pipeline.retrieval_config
-            llm_config = getattr(db_pipeline, 'llm_config', None) or {"provider": "gemini", "model": "gemini-2.5-flash"}
+            llm_config = getattr(db_pipeline, 'llm_config', None) or {"provider": "gemini", "model": "gemini-2.5-pro"}
             top_k = request.top_k or retrieval_config["top_k"]
 
             collection_name = db_pipeline.vector_store_config["collection_name"]
@@ -962,10 +962,10 @@ class RAGService:
         Falls back through providers if the configured one fails.
         """
         if not llm_config:
-            llm_config = {"provider": "gemini", "model": "gemini-2.5-flash"}
+            llm_config = {"provider": "gemini", "model": "gemini-2.5-pro"}
 
         provider = llm_config.get("provider", "gemini")
-        model_name = llm_config.get("model", "gemini-2.5-flash")
+        model_name = llm_config.get("model", "gemini-2.5-pro")
 
         # Map provider to call method
         provider_calls = {
@@ -999,7 +999,7 @@ class RAGService:
 
         return None
 
-    async def _call_gemini(self, system_prompt: str, user_prompt: str, model_name: str = "gemini-2.5-flash") -> Optional[str]:
+    async def _call_gemini(self, system_prompt: str, user_prompt: str, model_name: str = "gemini-2.5-pro") -> Optional[str]:
         """Call Google Gemini API."""
         api_key = settings.GOOGLE_API_KEY
         if not api_key:
